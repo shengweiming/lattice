@@ -1376,3 +1376,11 @@ button.paper-add-text { padding: 0; border-radius: var(--radius-compact); backgr
 .interface-zoom-value { min-width: 40px; text-align: center; font-weight: var(--weight-semibold); font-variant-numeric: tabular-nums; }
 .interface-zoom-divider { width: 1px; height: 14px; margin: 0 var(--space-1); background: var(--border-subtle); }
 .interface-zoom-reset .ui-keycaps { color: var(--text-tertiary); }
+
+/* The activity bar (trellis/trellis-activity-bar.tsx): VS Code-style view icons down the left edge. */
+.workbench-row { flex: 1; min-height: 0; display: flex; }
+.activity-bar { width: 48px; flex: none; display: flex; flex-direction: column; align-items: center; gap: var(--space-1); padding-top: var(--space-3); background: var(--surface-titlebar); box-shadow: inset -1px 0 0 var(--titlebar-rule); }
+.activity-bar-item { position: relative; width: 48px; height: 44px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); background: transparent; border: 0; transition: color var(--motion-fast); }
+.activity-bar-item:hover, .activity-bar-item:focus-visible { color: var(--text-primary); }
+.activity-bar-item[data-active] { color: var(--text-primary); }
+.activity-bar-item[data-active]::before { content: ""; position: absolute; left: 0; top: var(--space-4); bottom: var(--space-4); width: 2px; border-radius: 1px; background: var(--control-active); }

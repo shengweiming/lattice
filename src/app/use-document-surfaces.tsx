@@ -176,10 +176,17 @@ export function useDocumentSurfaces({
     else openSource();
   };
 
-  // The outline, from the source's rail and status bar or the PDF's toolbar: its menu closes as the jump starts.
+  // The outline, from the PDF's toolbar: its menu closes as the jump starts,
+  // and the PDF follows to the same place.
   const navigateOutline = (path: string, line: number) => {
     outline.setOpen(false);
     void syncTex.navigateOutline(path, line);
+  };
+  // The outline beside the source (its rail and the status bar's menu) moves
+  // only the source: this fork does not build or bring up the PDF for it.
+  const navigateSourceOutline = (path: string, line: number) => {
+    outline.setOpen(false);
+    void openFile(path, { line });
   };
 
   const documentCanvas = (
@@ -259,7 +266,7 @@ export function useDocumentSurfaces({
         onGotoLineRequest: () => setSearchDialog("goto-line"),
         outlineNodes: latex.outlineNodes,
         outlineRootPath: latex.rootDocumentPath,
-        onOutlineNavigate: navigateOutline,
+        onOutlineNavigate: navigateSourceOutline,
         tableGeneratorOpen: tableGenerator.open,
         onTableGeneratorOpenChange: tableGenerator.setOpen,
         onCreateMissingFile: (path) => {

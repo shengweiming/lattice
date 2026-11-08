@@ -60,8 +60,9 @@ export const VIEW_TYPES = [
 ] as const;
 
 /**
- * Project and the Agent share a panel above Papers on the left, and the PDF
- * takes the right. There is deliberately no stage: documents get panels of
+ * Files (the `project` view), Papers and the Agent share one sidebar panel on
+ * the left, switched by the activity bar like VS Code's, and the PDF takes
+ * the right. There is deliberately no stage: documents get panels of
  * their own between the two (`withDocumentPanel`), so hiding or closing any
  * panel lets its neighbours take the space instead of leaving an empty
  * region. Singletons get fixed ids so code can address them.
@@ -69,12 +70,12 @@ export const VIEW_TYPES = [
 export function defaultLayout(): LayoutDocument {
   return createDocument(
     L.row([
-      L.column([
-        L.panel({ id: "panel-project", selected: 0 }, L.view("project", { id: "project" }), L.view("agent", { id: "agent" })),
-        L.panel({ id: "panel-papers" }, L.view("papers", { id: "papers" })),
-      ], [0.62, 0.38]),
+      L.panel(
+        { id: "panel-project", selected: 0 },
+        L.view("project", { id: "project" }), L.view("papers", { id: "papers" }), L.view("agent", { id: "agent" }),
+      ),
       L.panel({ id: "panel-pdf" }, L.view("pdf", { id: "pdf" })),
-    ], [0.36, 0.64]),
+    ], [0.3, 0.7]),
     { version: LAYOUT_VERSION },
   );
 }

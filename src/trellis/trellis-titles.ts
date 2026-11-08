@@ -4,7 +4,7 @@ import type { MessageDescriptor } from "@lingui/core";
 import type { TrellisSingleton } from "./trellis-controller";
 
 export const PANEL_TITLES: Record<TrellisSingleton, MessageDescriptor> = {
-  project: msg`Project`,
+  project: msg`Files`,
   papers: msg`Papers`,
   agent: msg`Agent`,
   pdf: msg`PDF`,

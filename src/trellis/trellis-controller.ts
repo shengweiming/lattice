@@ -646,17 +646,15 @@ export class TrellisController {
       const panelId = docked(id);
       return panelId ? { into: panelId } : null;
     };
-    const near = (id: string, edge: "top" | "bottom", share: number): Placement | null => {
-      const panelId = docked(id);
-      return panelId ? { beside: panelId, edge, share } : null;
-    };
     const documents = this.documentPanel();
     const besideDocuments = (edge: "left" | "right", share: number): Placement =>
       documents ? { beside: documents, edge, share } : "side";
     switch (kind) {
-      case "project": return into("agent") ?? near("papers", "top", 0.62) ?? besideDocuments("left", 0.3);
-      case "agent": return into("project") ?? near("papers", "top", 0.62) ?? besideDocuments("left", 0.3);
-      case "papers": return near("project", "bottom", 0.38) ?? near("agent", "bottom", 0.38) ?? besideDocuments("left", 0.25);
+      // Files, Papers and the Agent are the activity bar's sidebar views: each
+      // reopens into the panel holding the others.
+      case "project": return into("papers") ?? into("agent") ?? besideDocuments("left", 0.3);
+      case "agent": return into("project") ?? into("papers") ?? besideDocuments("left", 0.3);
+      case "papers": return into("project") ?? into("agent") ?? besideDocuments("left", 0.3);
       case "pdf": return besideDocuments("right", 0.42);
       case "comments": return into("pdf") ?? besideDocuments("right", 0.36);
       case "terminal": return terminalHome(ws);

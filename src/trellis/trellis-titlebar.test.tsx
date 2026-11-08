@@ -88,7 +88,7 @@ describe("titlebar panel controls in a narrow window", () => {
     fireEvent.pointerDown(panels, { button: 0, ctrlKey: false, pointerType: "mouse" });
     const menu = within(screen.getByRole("menu"));
     expect(menu.getAllByRole("menuitemcheckbox").map((item) => [item.textContent, item.getAttribute("aria-checked")])).toEqual([
-      ["Project", "false"], ["Papers", "false"], ["Agent", "false"], ["PDF", "false"], ["Terminal", "false"],
+      ["Files", "false"], ["Papers", "false"], ["Agent", "false"], ["PDF", "false"], ["Terminal", "false"],
     ]);
     for (const name of ["Maximize focused panel", "Reset layout"]) {
       expect(menu.getByRole("menuitem", { name: new RegExp(`^${name}`) })).toBeVisible();

@@ -1,4 +1,4 @@
-import { AppWindow, BookOpen, ChevronDown, Cloud, ExternalLink, FileCode2, Globe, Image, MessagesSquare } from "lucide-react";
+import { AppWindow, BookOpen, ChevronDown, Cloud, ExternalLink, FileCode2, Focus, Globe, Image, MessagesSquare } from "lucide-react";
 import { memo, useMemo, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { useLingui } from "@lingui/react/macro";
 import { Tip } from "../components/icon-tip";
@@ -10,12 +10,15 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
 import type { TitlebarTool } from "../settings/app-settings";
+import { useTrellisController } from "../trellis/trellis-controller";
 
 type CanvasToolbarProps = {
   activePath: string;
   activeKind: "document" | "paper" | "asset";
   dirty: boolean;
   onHistory: () => void;
+  /** Enters focus mode (the open documents alone); no button without it. */
+  onFocusMode?: () => void;
   onGit: () => void;
   commentCount: number;
   onComments: () => void;
@@ -192,6 +195,11 @@ const CanvasToolbarView = memo(function CanvasToolbarView(props: CanvasToolbarPr
             {props.inBrowserTab ? <AppWindow size={14} /> : <Globe size={14} />}
           </ToolbarButton>
         )}
+        {props.onFocusMode && (
+          <ToolbarButton label={t`Focus mode`} className="history-button" onClick={props.onFocusMode}>
+            <Focus size={14} />
+          </ToolbarButton>
+        )}
       </div>
     </div>
   );
@@ -216,5 +224,8 @@ export function CanvasToolbar(props: CanvasToolbarProps) {
     (...args: unknown[]) => (latest.current[name] as ((...args: unknown[]) => void) | undefined)?.(...args),
   ])) as Required<ForwardedHandlers>, [latest]);
   const forwarded = Object.fromEntries(HANDLER_NAMES.map((name) => [name, props[name] ? stable[name] : undefined])) as ForwardedHandlers;
-  return <CanvasToolbarView {...props} {...forwarded} />;
+  // Focus mode is the workspace's, reached through its controller (none in a bare test mount).
+  const trellis = useTrellisController();
+  const focus = useMemo(() => (trellis ? () => trellis.setFocus(true) : undefined), [trellis]);
+  return <CanvasToolbarView {...props} {...forwarded} onFocusMode={focus} />;
 }

@@ -1,79 +1,20 @@
 /**
- * Titlebar controls for the Trellis workspace. On the left, a Panels menu that
- * shows or hides each panel, opens any tool, switches the workspace or preset,
- * maximizes and resets the layout, and the layout switch (the named
- * workspaces; see trellis-workspace-switch). In the middle, the command
+ * Titlebar controls for the Trellis workspace. (This fork drops the Panels
+ * menu and the workspace switch: the activity bar switches the sidebar, and
+ * focus mode is a button among the canvas tools.) In the middle, the command
  * palette's search field. On the right, beside the canvas tools, a chip per
  * hidden panel. The PDF also comes up from each .tex panel's Build button.
  * Eager but light: it drives the workspace only through the controller.
  */
-import { memo, useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
+import { memo, useLayoutEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import { useLingui } from "@lingui/react/macro";
-import {
-  Bot, Check, FileText, Focus, FolderTree, LayoutPanelLeft, Library, Maximize2, Minimize2, RotateCcw, Search,
-} from "lucide-react";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
-} from "../components/ui/dropdown-menu";
+import { Search } from "lucide-react";
 import { Tip } from "../components/icon-tip";
 import { Keycaps } from "../components/ui/keycaps";
 import { agentEntryProps } from "../agent/agent-entry";
-import {
-  TOOL_KINDS, useCurrentWorkspace, useWorkspaces, type TrellisController, type TrellisSingleton,
-} from "./trellis-controller";
-import { PANEL_TITLES, spaceMixedScript } from "./trellis-titles";
-import { PANEL_ICONS, PRESETS } from "./trellis-icons";
-import { LayoutSwitch } from "./trellis-workspace-switch";
-import { workspaceShortcut } from "./trellis-workspaces";
-import { FOCUS_MODE_KEY } from "./trellis-keymap";
-import { comboText } from "../app/key-combos";
-
-const CORE_PANELS = [
-  { kind: "project", icon: <FolderTree size={14} /> },
-  { kind: "papers", icon: <Library size={14} /> },
-  { kind: "agent", icon: <Bot size={14} /> },
-  { kind: "pdf", icon: <FileText size={14} /> },
-  { kind: "terminal", icon: PANEL_ICONS.terminal },
-] as const satisfies ReadonlyArray<{ kind: TrellisSingleton; icon: unknown }>;
-
-/**
- * The Panels menu's toggles, one per core panel: checked while the panel is
- * on screen, when choosing it hides the panel; otherwise choosing it brings
- * the panel forward. Mounted with the open menu, so the checks are read
- * then (a tab chosen behind the menu notifies nothing) and again whenever
- * panels open, close, hide or show while it is open.
- */
-function PanelToggles({ controller, onShow }: { controller: TrellisController; onShow: () => void }) {
-  const { i18n } = useLingui();
-  const subscribe = useCallback((listener: () => void) => {
-    const offUi = controller.ui.subscribe(listener);
-    const offWorkspace = controller.subscribeWorkspace(listener);
-    return () => { offUi(); offWorkspace(); };
-  }, [controller]);
-  // A string, so an unchanged answer does not re-render.
-  const onScreen = useSyncExternalStore(subscribe, () => CORE_PANELS.map(({ kind }) => (controller.panelOnScreen(kind) ? "1" : "0")).join(""));
-  return CORE_PANELS.map(({ kind, icon }, index) => {
-    const checked = onScreen[index] === "1";
-    const shortcut = controller.bridge?.shortcut(`panel-${kind}`);
-    return (
-      <DropdownMenuItem
-        key={kind}
-        role="menuitemcheckbox"
-        aria-checked={checked}
-        onSelect={() => {
-          if (!checked) onShow();
-          controller.togglePanel(kind);
-        }}
-        {...(kind === "agent" ? agentEntryProps : {})}
-      >
-        <span className="trellis-menu-check">{checked && <Check size={14} />}</span>
-        {icon}
-        <span className="flex-1 truncate">{i18n._(PANEL_TITLES[kind])}</span>
-        {shortcut && <span className="trellis-menu-shortcut">{shortcut}</span>}
-      </DropdownMenuItem>
-    );
-  });
-}
+import { useWorkspaces, type TrellisController } from "./trellis-controller";
+import { spaceMixedScript } from "./trellis-titles";
+import { ACTIVITY_KINDS } from "./trellis-activity-bar";
 
 /**
  * How many of the titlebar's folds it needs: `steps` of them, in order, each
@@ -211,14 +152,13 @@ export const TrellisTitlebar = memo(function TrellisTitlebar({ controller, onSea
   searchShortcut?: string;
 }) {
   const { t, i18n } = useLingui();
-  const hidden = useSyncExternalStore(controller.ui.subscribe, () => controller.ui.get().hidden);
-  const framed = useSyncExternalStore(controller.ui.subscribe, () => controller.ui.get().framed);
-  const preset = useSyncExternalStore(controller.ui.subscribe, () => controller.ui.get().preset);
+  const allHidden = useSyncExternalStore(controller.ui.subscribe, () => controller.ui.get().hidden);
+  // The sidebar panel (Files, Papers, Agent) comes back through the activity
+  // bar's icons, so it gets no restore chip here.
+  const sidebarPanels = new Set(ACTIVITY_KINDS.map((kind) => controller.ws?.view(kind)?.panelId));
+  const hidden = allHidden.filter((entry) => !sidebarPanels.has(entry.panelId));
   const workspaces = useWorkspaces(controller);
-  const workspace = useCurrentWorkspace(controller);
   const ws = () => controller.ws;
-  const title = (kind: TrellisSingleton) => i18n._(PANEL_TITLES[kind]);
-  const presetLabels = { writing: t`Writing`, reading: t`Reading` };
   const barRef = useRef<HTMLDivElement>(null);
   const chipsRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLButtonElement>(null);
@@ -230,84 +170,8 @@ export const TrellisTitlebar = memo(function TrellisTitlebar({ controller, onSea
   const compact = folds >= (onSearch ? 2 : 1);
   useWindowCentred(barRef, searchRef, Boolean(onSearch) && !searchFolded, `${content}\n${hidden.length}`);
   const searchLabel = t`Search files, papers and commands`;
-  // The menu never offers Maximize while ⌘⇧↩ would restore.
-  const frameAction = framed
-    ? { label: t`Restore the layout`, Icon: Minimize2, run: () => ws()?.navigation.frame("all") }
-    : { label: t`Maximize focused panel`, Icon: Maximize2, run: () => ws()?.navigation.toggle() };
-  // Showing a panel or tool moves keyboard focus into it (Trellis focuses the
-  // panel a frame later, a drawer its own field), so the closing menu must not
-  // pull focus back to its trigger. Every other close - Escape, hiding a
-  // panel, a layout command - returns focus to Panels, where the keyboard
-  // left off.
-  const handsOffFocusRef = useRef(false);
-  const handOffFocus = () => { handsOffFocusRef.current = true; };
-  const showPanel = (kind: TrellisSingleton) => {
-    handOffFocus();
-    controller.showPanel(kind);
-  };
   return (
     <div ref={barRef} className="trellis-titlebar" data-compact={compact || undefined} data-search-folded={searchFolded || undefined}>
-      <DropdownMenu modal={false}>
-        <DropdownMenuTrigger asChild>
-          {/* The menu is one way to the Agent, so opening it keeps a PDF selection for it. */}
-          <button type="button" className="trellis-titlebar-menu" aria-label={t`Panels`} data-trellis-panels-menu="" {...agentEntryProps}>
-            <LayoutPanelLeft size={14} />
-            <span>{t`Panels`}</span>
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="start"
-          sideOffset={6}
-          className="min-w-[14rem]"
-          onCloseAutoFocus={(event) => {
-            if (!handsOffFocusRef.current) return;
-            handsOffFocusRef.current = false;
-            event.preventDefault();
-          }}
-        >
-          <DropdownMenuLabel>{t`Panels`}</DropdownMenuLabel>
-          <PanelToggles controller={controller} onShow={handOffFocus} />
-          <DropdownMenuSeparator />
-          <DropdownMenuLabel>{t`Tools`}</DropdownMenuLabel>
-          {TOOL_KINDS.map((kind) => (
-            <DropdownMenuItem key={kind} onSelect={() => showPanel(kind)}>{PANEL_ICONS[kind]}{title(kind)}</DropdownMenuItem>
-          ))}
-          <DropdownMenuSeparator />
-          <DropdownMenuLabel>{t`Layout`}</DropdownMenuLabel>
-          {workspaces.map((entry, index) => {
-            const chosen = !preset && entry.id === workspace;
-            return (
-              <DropdownMenuItem key={entry.id} role="menuitemradio" aria-checked={chosen} onSelect={() => controller.switchWorkspace(entry.id)}>
-                <span className="trellis-menu-check">{chosen && <Check size={14} />}</span>
-                <span className="flex-1 truncate">{entry.name}</span>
-                {workspaceShortcut(index) && <span className="trellis-menu-shortcut">{workspaceShortcut(index)}</span>}
-              </DropdownMenuItem>
-            );
-          })}
-          {PRESETS.map(({ value, icon: Icon }) => (
-            <DropdownMenuItem key={value} role="menuitemradio" aria-checked={preset === value} data-layout-preset={value} onSelect={() => controller.setPreset(value)}>
-              <Icon size={14} />
-              <span className="flex-1">{presetLabels[value]}</span>
-              {preset === value && <Check size={14} className="trellis-menu-state" />}
-            </DropdownMenuItem>
-          ))}
-          <DropdownMenuItem onSelect={() => controller.setFocus(true)}>
-            <Focus size={14} />
-            <span className="flex-1">{t`Focus mode`}</span>
-            <span className="trellis-menu-shortcut">{comboText({ mod: true, ...FOCUS_MODE_KEY })}</span>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={frameAction.run}>
-            <frameAction.Icon size={14} />
-            <span className="flex-1">{frameAction.label}</span>
-            <span className="trellis-menu-shortcut">⌘⇧↩</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => void controller.resetLayout()}><RotateCcw size={14} />{t`Reset layout`}</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <div className="trellis-titlebar-group trellis-titlebar-presets">
-        <LayoutSwitch controller={controller} compact={compact} />
-      </div>
       {onSearch && (
         // Folded to its icon, the field names itself in a tooltip; in full,
         // its placeholder already does.

@@ -71,12 +71,10 @@ import { useInterfaceZoom } from "./app/use-interface-zoom";
 import { useWhatsNew } from "./app/use-whats-new";
 import { TrellisController, TrellisControllerContext, useTrellisUi } from "./trellis/trellis-controller";
 import { TrellisTitlebar } from "./trellis/trellis-titlebar";
+import { AppWorkbench } from "./app/app-workbench";
 import type { OpenSlideContext } from "./editor/presentation/open-slide-bridge";
-import { ChunkGate } from "./components/chunk-gate";
 import { LazyMount } from "./components/lazy-mount";
 import { markGetStartedStep, TUTORIAL_VENUE, watchGetStartedBuild } from "./onboarding/get-started-progress";
-import { lazyChunk } from "./lib/lazy-chunk";
-import { loadTrellisWorkspace } from "./app/workspace-chunks";
 import type { AppSurfaces } from "./app/app-surfaces";
 import { ReferencesPanel } from "./project/references-panel";
 import { resolveAppLocale } from "./settings/app-settings";
@@ -108,14 +106,11 @@ import { showError, showingErrors } from "./app/notify";
 import "./App.css";
 
 const PaperDropBridge = lazy(() => import("./papers/paper-drop-bridge"));
-// The workspace, the canvas and the project PDF beside it render behind a
-// ChunkGate, so a project's first frame shows as soon as their chunks are in,
-// with no Suspense reveal to wait out. The file tree and paper library
+// The workspace (app/app-workbench.tsx), the canvas and the project PDF beside
+// it render behind a ChunkGate. The file tree and paper library
 // (use-panel-portals.tsx) keep their boundaries: their reveal waits, after the
 // editor's. The canvas, the project PDF and Settings come with App's surfaces
 // (app/app-surfaces.ts).
-// The workspace (and the Trellis library) load after the eager startup chunks.
-const TrellisWorkspace = lazyChunk(loadTrellisWorkspace, (module) => module.default);
 const GetStartedPanel = lazy(() => import("./onboarding/get-started-panel"));
 
 function App({ surfaces }: { surfaces: AppSurfaces }) {
@@ -850,12 +845,7 @@ function App({ surfaces }: { surfaces: AppSurfaces }) {
         />
       )}
 
-      <main className="workspace trellis-workspace">
-        <ChunkGate chunk={loadTrellisWorkspace} fallback={workspaceLoading}>
-          <Suspense fallback={workspaceLoading}>
-            <TrellisWorkspace key={project.root} controller={trellis} projectRoot={project.root} dark={theme === "dark"} focusMode={focusMode} />
-          </Suspense>
-        </ChunkGate>
+      <AppWorkbench controller={trellis} projectRoot={project.root} dark={theme === "dark"} focusMode={focusMode} loading={workspaceLoading}>
         {panelPortals}
         {documentSurfaces}
         <LazyMount when={tools.isOpen.start}>
@@ -865,7 +855,7 @@ function App({ surfaces }: { surfaces: AppSurfaces }) {
             openOverleaf={() => setOverleafPickerOpen(true)} onClose={() => tools.close("start")}
           />
         </LazyMount>
-      </main>
+      </AppWorkbench>
 
 
       <TexSetupDialogs setup={texSetup} />
