@@ -1,6 +1,6 @@
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
-import { closeBracketsKeymap } from "@codemirror/autocomplete";
+import { acceptCompletion, closeBracketsKeymap } from "@codemirror/autocomplete";
 import {
   addCursorAbove, addCursorBelow, copyLineDown, cursorMatchingBracket, defaultKeymap, historyKeymap, indentLess, indentMore,
   indentWithTab, insertBlankLine, moveLineDown, moveLineUp, redo, selectLine, undo,
@@ -14,7 +14,8 @@ import { withoutAppShortcuts } from "./editor-app-shortcuts";
 /** The keys every source editor shares (codemirror-host's base setup), less those App owns. */
 export const baseEditorKeymap: readonly KeyBinding[] = withoutAppShortcuts([
   ...closeBracketsKeymap, ...defaultKeymap, ...searchKeymap, ...historyKeymap, ...foldKeymap, ...lintKeymap,
-  indentWithTab,
+  // Tab accepts an open completion like Enter; otherwise it indents.
+  { key: "Tab", run: acceptCompletion }, indentWithTab,
 ]);
 
 /**

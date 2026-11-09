@@ -32,6 +32,12 @@ function hideSidebar(controller: TrellisController, kind: TrellisSingleton) {
   if (view && view.placement !== "hidden") controller.ws?.hide(view.panelId);
 }
 
+/** Choose a sidebar view's icon (also ⌘1 to ⌘3): show the view, or hide the sidebar when it is already in front. */
+export function toggleActivity(controller: TrellisController, kind: TrellisSingleton) {
+  if (controller.panelOnScreen(kind)) hideSidebar(controller, kind);
+  else controller.showPanel(kind);
+}
+
 export function ActivityBar({ controller }: { controller: TrellisController }) {
   const { i18n, t } = useLingui();
   const subscribe = useCallback((listener: () => void) => {
@@ -55,7 +61,7 @@ export function ActivityBar({ controller }: { controller: TrellisController }) {
               data-active={active || undefined}
               aria-label={title}
               aria-pressed={active}
-              onClick={() => (active ? hideSidebar(controller, kind) : controller.showPanel(kind))}
+              onClick={() => toggleActivity(controller, kind)}
               {...(kind === "agent" ? agentEntryProps : {})}
             >
               {icon}

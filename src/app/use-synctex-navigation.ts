@@ -179,12 +179,9 @@ export function useSyncTexNavigation(deps: SyncTexNavigationDeps) {
     markGetStartedStep("jump");
   }, [activeFileRef, captureProjectScope, openFile, pdfUrlRef, reveal, scope]);
 
-  // A forward search needs the PDF panel on screen: reopen or reveal it.
+  // A forward search brings the PDF forward, as a tab over the documents.
   useEffect(() => {
-    const ws = trellis.ws;
-    if (!ws || !pdfSyncTarget) return;
-    const pdf = ws.view("pdf");
-    if (!pdf || !pdf.visible) trellis.showPanel("pdf", { focus: false });
+    if (trellis.ws && pdfSyncTarget) trellis.showPanel("pdf", { focus: false });
   }, [pdfSyncTarget, trellis]);
 
   return {

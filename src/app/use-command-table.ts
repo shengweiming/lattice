@@ -16,7 +16,7 @@ import type { SettingsSearchEntry } from "../settings/settings-search-index";
 import { REVEAL_IN_PDF_KEY } from "../pdf/pdf-keys";
 import type { TrellisController } from "../trellis/trellis-controller";
 import { closeDocumentTab } from "../trellis/close-document-tab";
-import { WORKSPACE_SHORTCUTS } from "../trellis/trellis-workspaces";
+import { ACTIVITY_KINDS, toggleActivity } from "../trellis/trellis-activity-bar";
 import { FOCUS_MODE_KEY, FRAME_TOGGLE_KEY } from "../trellis/trellis-keymap";
 import { PANEL_TITLES, spaceMixedScript } from "../trellis/trellis-titles";
 import { useLatestRef } from "../hooks/use-latest-ref";
@@ -164,14 +164,14 @@ export function useCommandTable({
   const trellisUi = trellis.ui.get();
   const docTools = trellis.docTools.get();
   const otherRecentProjects = recentProjects.filter((recent) => recent.path !== project?.root);
-  // ⌘S saves, then builds what it saved; on a Paper there is nothing to build.
+  // ⌘S saves and builds; in a .tex file it also jumps the PDF to the caret.
   const saveCommand: AppCommand = {
     id: "save", when: inProject, label: t`Save and build`, group: "build", key: "s", palette: false,
-    run: () => void save().then((saved) => {
+    run: () => void (latexSource && syncTex.canForwardSync ? revealSourceInPdf() : save().then((saved) => {
       if (!saved) return;
       void overleaf.flushDeferredWholeFileSync();
       if (!activePaper) void compileAndShowPdf();
-    }),
+    })),
   };
   /** Every app-level action: the palette entries, the window's shortcuts and the shortcut sheet (see AppCommand). */
   const revisableAnnotations = editorComments.comments.filter((annotation) => revisable(annotation, NO_RUNNING_REVISIONS)).length;
@@ -213,15 +213,9 @@ export function useCommandTable({
     trellisUi.framed
       ? { id: "frame", when: inProject, label: t`Restore the layout`, shortcut: FRAME_TOGGLE_KEY, group: "layout", run: () => trellis.ws?.navigation.frame("all") }
       : { id: "frame", when: inProject, label: t`Maximize focused panel`, shortcut: FRAME_TOGGLE_KEY, group: "layout", run: () => trellis.ws?.navigation.toggle() },
-    // The named workspaces: each by name here, and ⌘1 to ⌘9 by position (read when pressed, so a reorder counts at once).
-    ...trellis.workspaces.list().map(({ id, name }, index): AppCommand => ({
-      id: `workspace-${id}`, when: inProject, label: spaceMixedScript(t`Switch to ${name}`), group: "layout",
-      shortcut: index < WORKSPACE_SHORTCUTS ? { key: String(index + 1), mod: true } : undefined,
-      run: () => trellis.switchWorkspace(id),
-    })),
-    ...Array.from({ length: WORKSPACE_SHORTCUTS }, (_, index): AppCommand => ({
-      id: `workspace-${index + 1}`, when: inProject, label: t`Switch to a workspace by its place`, group: "layout", key: String(index + 1), palette: false,
-      run: () => trellis.switchWorkspaceAt(index),
+    // The named workspaces by name (⌘1 to ⌘3 are the sidebar's views).
+    ...trellis.workspaces.list().map(({ id, name }): AppCommand => ({
+      id: `workspace-${id}`, when: inProject, label: spaceMixedScript(t`Switch to ${name}`), group: "layout", run: () => trellis.switchWorkspace(id),
     })),
     {
       id: "focus-mode", when: inProject, label: focusMode ? t`Leave focus mode` : t`Focus mode`,
@@ -251,7 +245,8 @@ export function useCommandTable({
         id: `panel-${kind}`, when: inProject, group: "layout",
         label: spaceMixedScript(hide ? t({ message: `Hide ${name} panel` }) : t({ message: `Show ${name} panel` })),
         ...toggleKey,
-        run: () => (toggleKey ? trellis.togglePanel(kind) : trellis.showPanel(kind)),
+        run: () => ((ACTIVITY_KINDS as readonly string[]).includes(kind) ? toggleActivity(trellis, kind)
+          : toggleKey ? trellis.togglePanel(kind) : trellis.showPanel(kind)),
       };
     }),
     // A Markdown or HTML file's or a Paper's Edit, Split and Preview, under the names their switch gives them.

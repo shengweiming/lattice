@@ -493,10 +493,8 @@ export class TrellisController {
   }
 
   /**
-   * Bring a panel on screen: restore it if hidden, reopen it where it belongs
-   * if it was closed, and focus it (which also widens a framing that hid it).
-   * In focus mode the PDF joins the documents; any other panel asked for
-   * ends focus mode first.
+   * Bring a panel on screen (restore, reopen or focus it). In focus mode the
+   * PDF joins the documents; any other panel ends focus mode first.
    */
   showPanel(kind: TrellisSingleton, { focus = true }: { focus?: boolean } = {}) {
     const ws = this.ws;
@@ -514,23 +512,23 @@ export class TrellisController {
       return;
     }
     const view = ws.view(kind);
-    if (view?.placement === "hidden") {
-      this.restoreHidden(kind, view.panelId);
-      return;
-    }
-    if (view) {
+    if (view?.placement === "hidden") this.restoreHidden(kind, view.panelId);
+    else if (view) {
       if (focus || !view.visible) ws.focus(kind);
-      return;
+    } else ws.open(kind, { id: kind, focus, placement: this.homeOf(kind) });
+    // The PDF is a tab over the documents, so it takes their whole area.
+    const pdf = kind === "pdf" ? ws.view(kind) : null;
+    const documents = pdf && this.documentPanel();
+    if (pdf?.placement === "docked" && documents && pdf.panelId !== documents) {
+      ws.dock(kind, { into: documents });
+      ws.focus(kind);
     }
-    ws.open(kind, { id: kind, focus, placement: this.homeOf(kind) });
   }
 
   /**
-   * Trellis brings a hidden panel back where it was, or where the hidden
-   * panels it sat in or beside will be. One whose place is gone altogether
-   * (its group was closed meanwhile) comes back floating over the documents;
-   * unless it was hidden from a floating window, it docks where a closed panel
-   * would reopen instead.
+   * Trellis brings a hidden panel back where it was. One whose place is gone
+   * comes back floating; unless it was hidden from a floating window, it docks
+   * where a closed panel would reopen instead.
    */
   private restoreHidden(kind: TrellisSingleton, panelId: string) {
     const ws = this.ws;
@@ -630,11 +628,9 @@ export class TrellisController {
   }
 
   /**
-   * Where a closed panel comes back. Project and the Agent share a panel,
-   * Papers sits below them, the PDF right of the documents, Annotations with
-   * the PDF (else right of the documents they annotate), the Terminal below
-   * all, and other tools join the Project/Agent panel as tabs; with those
-   * gone, beside the documents.
+   * Where a closed panel comes back: the sidebar views into their shared
+   * panel, the PDF into the documents', Annotations with the PDF, the
+   * Terminal below all, other tools beside the documents.
    */
   private homeOf(kind: TrellisSingleton): Placement {
     const ws = this.ws;
@@ -655,7 +651,7 @@ export class TrellisController {
       case "project": return into("papers") ?? into("agent") ?? besideDocuments("left", 0.3);
       case "agent": return into("project") ?? into("papers") ?? besideDocuments("left", 0.3);
       case "papers": return into("project") ?? into("agent") ?? besideDocuments("left", 0.3);
-      case "pdf": return besideDocuments("right", 0.42);
+      case "pdf": return documents ? { into: documents } : "side";
       case "comments": return into("pdf") ?? besideDocuments("right", 0.36);
       case "terminal": return terminalHome(ws);
       default: return into("agent") ?? into("project") ?? besideDocuments("right", 0.32);

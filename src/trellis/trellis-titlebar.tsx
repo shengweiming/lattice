@@ -155,7 +155,7 @@ export const TrellisTitlebar = memo(function TrellisTitlebar({ controller, onSea
   const allHidden = useSyncExternalStore(controller.ui.subscribe, () => controller.ui.get().hidden);
   // The sidebar panel (Files, Papers, Agent) comes back through the activity
   // bar's icons, so it gets no restore chip here.
-  const sidebarPanels = new Set(ACTIVITY_KINDS.map((kind) => controller.ws?.view(kind)?.panelId));
+  const sidebarPanels = new Set([...ACTIVITY_KINDS, "pdf"].map((kind) => controller.ws?.view(kind)?.panelId));
   const hidden = allHidden.filter((entry) => !sidebarPanels.has(entry.panelId));
   const workspaces = useWorkspaces(controller);
   const ws = () => controller.ws;

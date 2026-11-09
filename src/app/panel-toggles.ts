@@ -11,13 +11,12 @@ export const SINGLETON_PANELS = [
 ] as const;
 
 /**
- * Project, Papers and the Agent toggle on ⌘⌥1 to ⌘⌥3, in the Panels menu's
- * order (⌘1 to ⌘9 are the workspaces), and the Terminal on ⌃`. Every other
- * panel and tool is only shown.
+ * Files, Papers and the Agent toggle on ⌘1 to ⌘3, as their activity bar
+ * icons do, and the Terminal on ⌃`. Every other panel and tool is only shown.
  */
 export const PANEL_TOGGLE_KEYS: Partial<Record<(typeof SINGLETON_PANELS)[number], Pick<AppCommand, "key" | "alt" | "ctrl">>> = {
-  project: { key: "1", alt: true },
-  papers: { key: "2", alt: true },
-  agent: { key: "3", alt: true },
+  project: { key: "1" },
+  papers: { key: "2" },
+  agent: { key: "3" },
   terminal: TERMINAL_TOGGLE_KEY,
 };
